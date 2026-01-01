@@ -1,28 +1,84 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Мониторинг землетрясений (M5+)</title>
     <!-- SVG Favicon -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='48' fill='%23ef4444'/><path d='M20 50 L32 50 L40 25 L50 75 L60 35 L68 50 L80 50' stroke='white' stroke-width='8' stroke-linecap='round' stroke-linejoin='round' fill='none'/></svg>">
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='48' fill='%23ef4444'/><path d='M20 50 L32 50 L40 25 L50 75 L60 35 L68 50 L80 50' stroke='white' stroke-width='8' stroke-linecap='round' stroke-linejoin='round' fill='none'/></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/globe.gl"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f8fafc;
         }
-        .mag-critical { background-color: #ef4444; color: white; }
-        .mag-high { background-color: #f97316; color: white; }
-        .mag-medium { background-color: #eab308; color: black; }
-        
+
+        .mag-critical {
+            background-color: #ef4444;
+            color: white;
+        }
+
+        .mag-high {
+            background-color: #f97316;
+            color: white;
+        }
+
+        .mag-medium {
+            background-color: #eab308;
+            color: black;
+        }
+
         .card-hover:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         }
+
+        #globe-container {
+            width: 100%;
+            height: 600px;
+            background: #e2e8f0;
+            border-radius: 1.5rem;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .view-toggle-btn.active {
+            background-color: white;
+            color: #ef4444;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .float-tooltip-kap {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            border-radius: 0 !important;
+        }
+
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(0.95) translateY(5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .animate-tooltip {
+            animation: fadeInScale 0.2s ease-out forwards;
+        }
     </style>
 </head>
+
 <body class="min-h-screen text-slate-900 transition-colors duration-300">
 
     <!-- Header -->
@@ -30,15 +86,28 @@
         <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
             <div class="flex items-center gap-2">
                 <div class="p-2 bg-red-100 rounded-lg">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
                 </div>
-                <h1 class="text-xl font-bold tracking-tight">QuakeGuard <span class="text-slate-400 font-medium text-sm hidden sm:inline ml-2">M5.0+ за 3 дня</span></h1>
+                <h1 class="text-xl font-bold tracking-tight">QuakeGuard <span
+                        class="text-slate-400 font-medium text-sm hidden sm:inline ml-2">M5.0+ за 3 дня</span></h1>
             </div>
-            <div id="status-location" class="text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-                Определение локации...
+
+            <div class="flex items-center gap-4">
+                <div class="flex p-1 bg-slate-100 rounded-xl">
+                    <button id="btn-list" onclick="switchView('list')"
+                        class="view-toggle-btn active px-4 py-1.5 text-xs font-bold rounded-lg transition-all duration-200">СПИСОК</button>
+                    <button id="btn-globe" onclick="switchView('globe')"
+                        class="view-toggle-btn px-4 py-1.5 text-xs font-bold rounded-lg transition-all duration-200">ГЛОБУС</button>
+                </div>
+                <div id="status-location"
+                    class="text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                    Определение локации...
+                </div>
             </div>
         </div>
     </header>
@@ -57,17 +126,26 @@
 
         <div id="empty-state" class="hidden flex flex-col items-center justify-center py-20 text-center">
             <div class="text-slate-300 mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-20 h-20 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-20 h-20 mx-auto" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1"
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
             </div>
             <h3 class="text-lg font-semibold text-slate-700">Все спокойно</h3>
             <p class="text-slate-500">За последние 3 дня землетрясений магнитудой выше 5.0 не зафиксировано.</p>
         </div>
 
-        <!-- Earthquake Grid -->
-        <div id="quake-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Earthquake Views -->
+        <div id="view-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <!-- Cards will be injected here -->
+        </div>
+
+        <div id="view-globe" class="hidden">
+            <div id="globe-container"></div>
+            <div class="mt-4 text-center text-xs text-slate-400 italic">
+                Удерживайте для вращения • Нажмите на метку для деталей
+            </div>
         </div>
 
         <footer class="mt-12 pt-8 border-t border-slate-200 text-center text-slate-400 text-sm">
@@ -83,6 +161,8 @@
         };
 
         let userCoords = null;
+        let allQuakes = [];
+        let globeInstance = null;
 
         // --- Core Functions ---
 
@@ -90,20 +170,113 @@
             try {
                 // 1. Start geolocation request immediately
                 getUserLocation();
-                
+
                 // 2. Fetch data
-                const quakes = await fetchEarthquakes();
-                
-                // 3. Render initial list (even without location yet)
-                renderQuakes(quakes);
-                
+                allQuakes = await fetchEarthquakes();
+
+                // 3. Render initial list
+                renderQuakes(allQuakes);
+
+                // 4. Init globe
+                initGlobe();
+
                 document.getElementById('loading-state').classList.add('hidden');
             } catch (error) {
                 console.error(error);
                 document.getElementById('loading-state').classList.add('hidden');
                 document.getElementById('error-state').classList.remove('hidden');
-                document.getElementById('error-message').textContent = error.message;
             }
+        }
+
+        function switchView(view) {
+            document.getElementById('view-list').classList.toggle('hidden', view !== 'list');
+            document.getElementById('view-globe').classList.toggle('hidden', view !== 'globe');
+
+            document.getElementById('btn-list').classList.toggle('active', view === 'list');
+            document.getElementById('btn-globe').classList.toggle('active', view === 'globe');
+
+            if (view === 'globe' && globeInstance) {
+                globeInstance.width(document.getElementById('globe-container').clientWidth);
+            }
+        }
+
+        function initGlobe() {
+            const container = document.getElementById('globe-container');
+
+            const pointsData = allQuakes.map(q => ({
+                lat: q.geometry.coordinates[1],
+                lng: q.geometry.coordinates[0],
+                mag: q.properties.mag,
+                label: `${q.properties.mag.toFixed(1)}`,
+                place: q.properties.place,
+                url: q.properties.url
+            }));
+
+            const getQuakeColor = (mag) => {
+                if (mag >= 7) return '#ef4444';
+                if (mag >= 6) return '#f97316';
+                return '#eab308';
+            };
+
+            globeInstance = Globe()(container)
+                .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
+                .bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png')
+                .backgroundColor('rgba(0,0,0,0)')
+                .width(container.clientWidth)
+                .height(600)
+                .pointsData(pointsData)
+                .pointColor(d => getQuakeColor(d.mag))
+                .pointRadius(0.8)
+                .pointAltitude(0.01)
+                .pointLabel(d => `
+                    <div style="padding: 15px;" class="animate-tooltip">
+                        <div class="bg-white border border-slate-200 text-slate-800 p-4 rounded-2xl shadow-xl max-w-xs pointer-events-none">
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Эпицентр</div>
+                            <div class="font-bold text-sm leading-tight mb-3">${d.place}</div>
+                            <div class="flex items-center gap-2">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-black text-white" 
+                                    style="background-color: ${getQuakeColor(d.mag)}">
+                                    ${d.mag.toFixed(1)}
+                                </span>
+                                <span class="text-[10px] text-slate-400 font-medium">Нажмите для подробностей</span>
+                            </div>
+                        </div>
+                    </div>
+                `)
+                .ringsData(pointsData)
+                .ringColor(d => getQuakeColor(d.mag))
+                .ringMaxRadius(3)
+                .ringPropagationSpeed(1.5)
+                .ringRepeatPeriod(1000)
+                .labelsData(pointsData)
+                .labelLat(d => d.lat)
+                .labelLng(d => d.lng)
+                .labelText(d => d.label)
+                .labelSize(1.5)
+                .labelDotRadius(0.3)
+                .labelColor(d => getQuakeColor(d.mag))
+                .onPointClick(d => {
+                    globeInstance.controls().autoRotate = false;
+                    window.open(d.url, '_blank');
+                })
+                .onLabelClick(d => {
+                    globeInstance.controls().autoRotate = false;
+                    window.open(d.url, '_blank');
+                });
+
+            // Auto rotate settings
+            const controls = globeInstance.controls();
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 0.5;
+
+            // Stop auto-rotation on any interaction
+            controls.addEventListener('start', () => {
+                controls.autoRotate = false;
+            });
+
+            window.addEventListener('resize', () => {
+                if (globeInstance) globeInstance.width(container.clientWidth);
+            });
         }
 
         async function fetchEarthquakes() {
@@ -112,17 +285,17 @@
             const startTime = date.toISOString();
 
             const url = `${CONFIG.API_BASE}?format=geojson&starttime=${startTime}&minmagnitude=${CONFIG.MIN_MAGNITUDE}&orderby=time`;
-            
+
             const response = await fetch(url);
             if (!response.ok) throw new Error('Ошибка связи с сервером API');
-            
+
             const data = await response.json();
             return data.features;
         }
 
         function getUserLocation() {
             const statusEl = document.getElementById('status-location');
-            
+
             if (!navigator.geolocation) {
                 statusEl.innerHTML = 'Геолокация не поддерживается';
                 return;
@@ -135,7 +308,6 @@
                         lng: position.coords.longitude
                     };
                     statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-green-500"></span> Локация определена`;
-                    // Re-render to show distances
                     refreshDistances();
                 },
                 (error) => {
@@ -149,10 +321,10 @@
             const R = 6371; // Earth radius in km
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = 
-                Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const a =
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
             return Math.round(R * c);
         }
 
@@ -172,7 +344,7 @@
         }
 
         function renderQuakes(quakes) {
-            const container = document.getElementById('quake-list');
+            const container = document.getElementById('view-list');
             if (quakes.length === 0) {
                 document.getElementById('empty-state').classList.remove('hidden');
                 return;
@@ -183,7 +355,7 @@
                 const coords = quake.geometry.coordinates; // [lng, lat, depth]
                 const magClass = getMagnitudeClass(props.mag);
                 const timeStr = formatDate(props.time);
-                
+
                 let distanceHtml = '<span class="text-slate-400">--- км</span>';
                 if (userCoords) {
                     const dist = calculateDistance(userCoords.lat, userCoords.lng, coords[1], coords[0]);
@@ -233,13 +405,13 @@
 
         function refreshDistances() {
             if (!userCoords) return;
-            
+
             const cards = document.querySelectorAll('.quake-card');
             cards.forEach(card => {
                 const lat = parseFloat(card.dataset.lat);
                 const lng = parseFloat(card.dataset.lng);
                 const distValueEl = card.querySelector('.distance-value');
-                
+
                 const dist = calculateDistance(userCoords.lat, userCoords.lng, lat, lng);
                 distValueEl.innerHTML = `<span class="text-blue-600 font-semibold">${dist.toLocaleString()} км от вас</span>`;
             });
@@ -249,4 +421,5 @@
         window.onload = init;
     </script>
 </body>
+
 </html>
