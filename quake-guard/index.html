@@ -33,11 +33,6 @@
             color: black;
         }
 
-        .card-hover:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        }
-
         #globe-container {
             width: 100%;
             height: 600px;
@@ -45,6 +40,19 @@
             border-radius: 1.5rem;
             overflow: hidden;
             position: relative;
+            contain: strict;
+        }
+
+        .quake-card {
+            content-visibility: auto;
+            contain-intrinsic-size: 1px 180px;
+            will-change: transform, box-shadow;
+            transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+        }
+
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         }
 
         .view-toggle-btn.active {
@@ -179,8 +187,10 @@
                 // 3. Render initial list
                 renderQuakes(allQuakes);
 
-                // 4. Init globe
-                initGlobe();
+                // 4. Init globe lazily if it was already selected
+                if (document.getElementById('btn-globe').classList.contains('active')) {
+                    initGlobe();
+                }
 
                 document.getElementById('loading-state').classList.add('hidden');
             } catch (error) {
@@ -197,8 +207,15 @@
             document.getElementById('btn-list').classList.toggle('active', view === 'list');
             document.getElementById('btn-globe').classList.toggle('active', view === 'globe');
 
-            if (view === 'globe' && globeInstance) {
-                globeInstance.width(document.getElementById('globe-container').clientWidth);
+            if (view === 'globe') {
+                if (!globeInstance) {
+                    initGlobe();
+                } else {
+                    globeInstance.width(document.getElementById('globe-container').clientWidth);
+                    globeInstance.controls().autoRotate = true;
+                }
+            } else if (view === 'list' && globeInstance) {
+                globeInstance.controls().autoRotate = false;
             }
         }
 
@@ -365,7 +382,7 @@
                 }
 
                 return `
-                    <div class="bg-white border border-slate-200 p-5 rounded-2xl flex flex-col gap-4 transition-all duration-200 card-hover quake-card" 
+                    <div class="bg-white border border-slate-200 p-5 rounded-2xl flex flex-col gap-4 card-hover quake-card" 
                          data-lat="${coords[1]}" data-lng="${coords[0]}">
                         <div class="flex justify-between items-start">
                             <div class="flex flex-col">
