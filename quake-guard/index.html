@@ -462,7 +462,7 @@
                 let distanceHtml = '<span class="text-slate-400">--- км</span>';
                 if (userCoords) {
                     const dist = calculateDistance(userCoords.lat, userCoords.lng, coords[1], coords[0]);
-                    distanceHtml = `<span class="text-blue-600 font-semibold">${dist.toLocaleString()} км от вас</span>`;
+                    distanceHtml = `<span class="text-blue-600 font-semibold">${dist.toLocaleString()} км</span>`;
                 }
 
                 const diffMs = Date.now() - props.time;
@@ -533,7 +533,7 @@
                 const distValueEl = card.querySelector('.distance-value');
 
                 const dist = calculateDistance(userCoords.lat, userCoords.lng, lat, lng);
-                distValueEl.innerHTML = `<span class="text-blue-600 font-semibold">${dist.toLocaleString()} км от вас</span>`;
+                distValueEl.innerHTML = `<span class="text-blue-600 font-semibold">${dist.toLocaleString()} км</span>`;
             });
         }
 
