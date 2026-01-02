@@ -425,8 +425,18 @@
                     distanceHtml = `<span class="text-blue-600 font-semibold">${dist.toLocaleString()} км от вас</span>`;
                 }
 
-                const hoursAgo = Math.floor((Date.now() - props.time) / (1000 * 60 * 60));
-                const hoursStr = hoursAgo === 0 ? 'менее часа назад' : `${hoursAgo} ч. назад`;
+                const diffMs = Date.now() - props.time;
+                const hoursTotal = Math.floor(diffMs / (1000 * 60 * 60));
+                let hoursStr = '';
+                if (hoursTotal === 0) {
+                    hoursStr = 'менее часа назад';
+                } else if (hoursTotal < 24) {
+                    hoursStr = `${hoursTotal} ч. назад`;
+                } else {
+                    const days = Math.floor(hoursTotal / 24);
+                    const hours = hoursTotal % 24;
+                    hoursStr = hours > 0 ? `${days} д. ${hours} ч. назад` : `${days} д. назад`;
+                }
 
                 return `
                     <div class="bg-white border border-slate-200 p-5 rounded-2xl flex flex-col gap-4 card-hover quake-card" 
