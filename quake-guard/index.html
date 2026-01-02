@@ -90,6 +90,17 @@
         .animate-tooltip {
             animation: fadeInScale 0.2s ease-out forwards;
         }
+
+        .globlejs-tooltip,
+        .scene-tooltip {
+            pointer-events: auto !important;
+            cursor: default !important;
+        }
+
+        .scene-tooltip * {
+            pointer-events: auto !important;
+            touch-action: auto !important;
+        }
     </style>
 </head>
 
@@ -179,6 +190,7 @@
         let userCoords = null;
         let allQuakes = [];
         let globeInstance = null;
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
         // --- Helpers ---
 
@@ -273,21 +285,35 @@
                 .pointColor(d => getQuakeColor(d.mag))
                 .pointRadius(0.8)
                 .pointAltitude(0.01)
-                .pointLabel(d => `
-                    <div style="padding: 15px;" class="animate-tooltip">
-                        <div class="bg-white border border-slate-200 text-slate-800 p-4 rounded-2xl shadow-xl max-w-xs pointer-events-none">
-                            <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Эпицентр</div>
-                            <div class="font-bold text-sm leading-tight mb-3">${d.place}</div>
-                            <div class="flex items-center gap-2">
-                                <span class="px-2 py-0.5 rounded text-[10px] font-black text-white" 
-                                    style="background-color: ${getQuakeColor(d.mag)}">
-                                    ${d.mag.toFixed(1)}
-                                </span>
-                                <span class="text-[10px] text-slate-400 font-medium">Нажмите для подробностей</span>
+                .pointLabel(d => {
+                    const url = d.url;
+                    return `
+                        <div style="padding: 15px; pointer-events: auto;" class="animate-tooltip">
+                            <div 
+                                onmousedown="event.stopPropagation(); window.open('${url}', '_blank');"
+                                ontouchstart="event.stopPropagation(); window.open('${url}', '_blank');"
+                                class="bg-white border border-slate-200 text-slate-800 p-4 rounded-2xl shadow-xl max-w-xs cursor-pointer active:bg-slate-50 transition-colors"
+                                style="pointer-events: auto;">
+                                
+                                <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Эпицентр</div>
+                                <div class="font-bold text-sm leading-tight mb-3">${d.place}</div>
+                                
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2">
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-black text-white" 
+                                            style="background-color: ${getQuakeColor(d.mag)}">
+                                            ${d.mag.toFixed(1)}
+                                        </span>
+                                        <span class="text-[10px] text-slate-400 font-medium">Подробности</span>
+                                    </div>
+                                    <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                    </svg>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `)
+                    `;
+                })
                 .ringsData(pointsData)
                 .ringColor(d => getQuakeColor(d.mag))
                 .ringMaxRadius(3)
@@ -302,11 +328,15 @@
                 .labelColor(d => getQuakeColor(d.mag))
                 .onPointClick(d => {
                     globeInstance.controls().autoRotate = false;
-                    window.open(d.url, '_blank');
+                    if (!isMobile) {
+                        window.open(d.url, '_blank');
+                    }
                 })
                 .onLabelClick(d => {
                     globeInstance.controls().autoRotate = false;
-                    window.open(d.url, '_blank');
+                    if (!isMobile) {
+                        window.open(d.url, '_blank');
+                    }
                 });
 
             // Auto rotate settings
